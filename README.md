@@ -106,8 +106,6 @@ Clone or copy this repo into your home directory.
 
 ### 2. Environment variables
 
-Note: this step is unnecessary on LinuxLab, but it is included in case you choose to work on your local machine.
-
 If provided, source the helper script:
 
 ```bash
