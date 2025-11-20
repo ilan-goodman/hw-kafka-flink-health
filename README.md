@@ -163,28 +163,32 @@ pip show pyspark   # optional, for Spark part
 
 ## Starting Kafka
 
-You will use **one** broker and **one** ZooKeeper instance for this assignment (or a single KRaft broker if your environment uses that; ask the TA if unsure).
+You will use **one** broker and **one** KRaft instance for this assignment (or a single Zookeeper broker if your environment uses that; ask the TA if unsure).
 
-Assuming ZooKeeper-based Kafka:
+Assuming KRaft-based Kafka:
 
-### 1. Start ZooKeeper
-
-```bash
-$KAFKA_HOME/bin/zookeeper-server-start.sh \
-  -daemon $KAFKA_HOME/config/zookeeper.properties
-```
-
-Check that it’s running (there should be a Java process with “QuorumPeerMain” or similar):
+### 1. Start Kafka in KRaft mode (one time only)
 
 ```bash
-ps aux | grep zookeeper
+# ONE-TIME ONLY (cluster bootstrap; do NOT re-run if already formatted)
+CLUSTER_ID=$(python - << 'EOF'
+import uuid
+print(uuid.uuid4())
+EOF
+)
+
+$KAFKA_HOME/bin/kafka-storage.sh format \
+  -t "$CLUSTER_ID" \
+  -c $KAFKA_HOME/config/server.properties \
+  --standalone
 ```
 
 ### 2. Start Kafka broker
 
 ```bash
 $KAFKA_HOME/bin/kafka-server-start.sh \
-  -daemon $KAFKA_HOME/config/server.properties
+  $KAFKA_HOME/config/server.properties \
+  > $HOME/kafka.log 2>&1 &
 ```
 
 Check that the broker is running:
