@@ -186,6 +186,8 @@ $KAFKA_HOME/bin/kafka-storage.sh format \
 ### 2. Start Kafka broker
 
 ```bash
+export LOG_DIR=~/kafka_logs
+
 $KAFKA_HOME/bin/kafka-server-start.sh \
   $KAFKA_HOME/config/server.properties \
   > $HOME/kafka.log 2>&1 &
@@ -194,8 +196,12 @@ $KAFKA_HOME/bin/kafka-server-start.sh \
 Check that the broker is running:
 
 ```bash
-ps aux | grep kafka.Kafka
+$KAFKA_HOME/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --list
 ```
+
+If this returns (even an empty list) without “Connection to node -1 could not be established”, Kafka has started.
 
 ### 3. Create topics
 
