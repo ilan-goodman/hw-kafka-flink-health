@@ -261,7 +261,7 @@ Before you start the main assignment, please run this tiny **hello-world Kafka +
 
 Follow the earlier instructions in this README to:
 
-1. Start ZooKeeper and the Kafka broker.
+1. Start KRaft and the Kafka broker.
 2. Start the Flink cluster (`$FLINK_HOME/bin/start-cluster.sh`).
 
 ### Step 1: Create hello-world topics
