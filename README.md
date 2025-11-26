@@ -244,10 +244,10 @@ Check that JobManager and TaskManager are running:
 jps   # should show 'StandaloneSessionClusterEntrypoint' or 'FlinkRunner', etc.
 ```
 
-(Optional) Forward the Flink web UI to your laptop:
+(Optional, if using a remote machine that's not LinuxLab) Forward the Flink web UI to your laptop:
 
 ```bash
-ssh -L 8081:localhost:8081 <your_netid>@linuxlab.school.edu
+ssh -L 8081:localhost:8081 <remote_userid>@<url>
 # Then open http://localhost:8081 in your local browser.
 ```
 
