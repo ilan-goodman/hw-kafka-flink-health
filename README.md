@@ -104,7 +104,15 @@ ssh <your_wustl_id>@shell.engr.wustl.edu
 
 Clone or copy this repo into your home directory.
 
-### 2. Environment variables
+### 2. Environment variables (shared tools vs. your Python venv)
+
+On LinuxLab we will use:
+
+- **Centrally managed** installations for:
+  - Kafka under `/opt/kafka`
+  - Flink under `/opt/flink`
+  - Spark under `/opt/spark`
+- A **per-student Python virtualenv** in this repo for your homework code.
 
 If provided, source the helper script:
 
@@ -130,19 +138,46 @@ $FLINK_HOME/bin/flink --version
 $SPARK_HOME/bin/spark-shell --version
 ```
 
+> **Typical workflow:**  
+> - Use one terminal (with these environment variables) to start **Kafka** and **Flink** using the shared `/opt/...` installations.  
+> - Use another terminal where you activate your **Python venv** (see below) to run `python`, `pytest`, and `flink run -py ...` for this homework.
+
 ### 3. Python virtual environment and dependencies
 
-If running on LinuxLab:
+#### 3.1. On LinuxLab
+
+On the `server-airflow25` (or as instructed by the course):
 
 ```bash
-server-airflow25
+cd ~/hw-kafka-flink-health
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-Follow the instructions at https://docs.google.com/document/d/1UbpQ2U39TMOyxMnlgRkRFg9VhMET7YQ7BUp4m3BUURw/edit?tab=t.0#heading=h.z1dl2c21bb85.
+Check that `apache-flink`, `kafka-python`, and `pyspark` (optional) are installed **inside this venv**:
 
-If running locally:
+```bash
+pip show apache-flink
+pip show kafka-python
+pip show pyspark   # optional, for Spark part
+```
 
-Create and activate a virtual environment:
+Whenever you work on this homework, activate the venv first:
+
+```bash
+cd ~/hw-kafka-flink-health
+source venv/bin/activate
+```
+
+Then run `python src/...`, `pytest`, and `flink run -py ...` from this venv.
+
+#### 3.2. If running locally
+
+If you are doing the assignment on your own machine (with local Kafka/Flink installs), you can reuse the same venv pattern:
 
 ```bash
 cd ~/hw-kafka-flink-health
@@ -151,23 +186,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Check that `apache-flink`, `kafka-python`, and `pyspark` (optional) are installed:
-
-```bash
-pip show apache-flink
-pip show kafka-python
-pip show pyspark   # optional, for Spark part
-```
-
 ---
 
 ## Starting Kafka
 
-You will use **one** broker and **one** KRaft instance for this assignment (or a single Zookeeper broker if your environment uses that; ask the TA if unsure).
+You will use **one** broker and **one** KRaft instance for this assignment (no ZooKeeper).
+
+> **Note:** The storage format step below is a **one-time cluster bootstrap** for the broker’s data directory. On a shared cluster this may already have been done by IT; follow course-specific instructions about whether you should run it yourself.
 
 Assuming KRaft-based Kafka:
 
 ### 1. Start Kafka in KRaft mode (one time only)
+
+Only run this **once per broker data directory**, and only if instructed by the course staff:
 
 ```bash
 # ONE-TIME ONLY (cluster bootstrap; do NOT re-run if already formatted)
@@ -185,7 +216,12 @@ $KAFKA_HOME/bin/kafka-storage.sh format \
 
 ### 2. Start Kafka broker
 
+In a terminal where the shared environment is configured:
+
 ```bash
+export KAFKA_HOME=/opt/kafka
+export PATH="$KAFKA_HOME/bin:$PATH"
+
 export LOG_DIR=~/kafka_logs
 
 $KAFKA_HOME/bin/kafka-server-start.sh \
@@ -193,7 +229,7 @@ $KAFKA_HOME/bin/kafka-server-start.sh \
   > $HOME/kafka.log 2>&1 &
 ```
 
-Check that the broker is running:
+Check that the broker is running by listing topics:
 
 ```bash
 $KAFKA_HOME/bin/kafka-topics.sh \
@@ -201,7 +237,21 @@ $KAFKA_HOME/bin/kafka-topics.sh \
   --list
 ```
 
-If this returns (even an empty list) without “Connection to node -1 could not be established”, Kafka has started.
+If this returns (even an empty list) without:
+
+```text
+Connection to node -1 (localhost/127.0.0.1:9092) could not be established
+```
+
+then Kafka has started.
+
+You can also double-check the process:
+
+```bash
+ps aux | grep -E 'kafka\.server|KafkaRaftServer'
+```
+
+You should see a `java` process with a class name like `kafka.server.KafkaRaftServer`.
 
 ### 3. Create topics
 
@@ -232,7 +282,7 @@ You should see `heart_rate_events` and `heart_rate_alerts`.
 
 ## Starting Flink
 
-Start a standalone **local Flink cluster**:
+Start a standalone **local Flink cluster** (using the centrally managed install):
 
 ```bash
 $FLINK_HOME/bin/start-cluster.sh
@@ -241,7 +291,7 @@ $FLINK_HOME/bin/start-cluster.sh
 Check that JobManager and TaskManager are running:
 
 ```bash
-jps   # should show 'StandaloneSessionClusterEntrypoint' or 'FlinkRunner', etc.
+jps   # should show 'StandaloneSessionClusterEntrypoint' or similar
 ```
 
 (Optional, if using a remote machine that's not LinuxLab) Forward the Flink web UI to your laptop:
@@ -250,6 +300,16 @@ jps   # should show 'StandaloneSessionClusterEntrypoint' or 'FlinkRunner', etc.
 ssh -L 8081:localhost:8081 <remote_userid>@<url>
 # Then open http://localhost:8081 in your local browser.
 ```
+
+> **Flink Kafka connector note:**  
+> For `KafkaSource` / `KafkaSink` in PyFlink to work, the Flink Kafka connector JAR (e.g., `flink-connector-kafka-<version>.jar`) must be present on the cluster’s classpath.  
+> If you see an error like:
+>
+> ```text
+> TypeError: Could not found the Java class 'org.apache.flink.connector.kafka.source.KafkaSource.builder'
+> ```
+>
+> it means the Kafka connector is missing. Follow course instructions or contact IT. Once the jar is installed (typically under `/opt/flink/opt`), you may need to add a `--jarfile /opt/flink/opt/flink-connector-kafka-<version>.jar` flag when running `flink run`.
 
 ---
 
@@ -283,6 +343,8 @@ $KAFKA_HOME/bin/kafka-topics.sh \
 From the repo root (with your virtualenv activated):
 
 ```bash
+cd ~/hw-kafka-flink-health
+source venv/bin/activate
 python src/hello_kafka_producer.py
 ```
 
@@ -293,9 +355,23 @@ You should see it send 10 small JSON messages to the `hello_input` topic.
 In a separate terminal (Kafka + Flink still running, venv activated):
 
 ```bash
+cd ~/hw-kafka-flink-health
+source venv/bin/activate
+
 $FLINK_HOME/bin/flink run -py src/hello_flink_job.py \
   --job_name "HelloFlinkJob"
 ```
+
+> If the Kafka connector is not yet on the cluster classpath, your TA/IT may instruct you to add a `--jarfile` argument, for example:
+>
+> ```bash
+> $FLINK_HOME/bin/flink run \
+>   -py src/hello_flink_job.py \
+>   --job_name "HelloFlinkJob" \
+>   --jarfile /opt/flink/opt/flink-connector-kafka-<version>.jar
+> ```
+>
+> Use the path/version provided by the instructor.
 
 This job reads from `hello_input`, adds a `"processed_by": "hello_flink_job"` field, and writes to `hello_output`.
 
@@ -460,8 +536,20 @@ Both are valid; choose what you understand.
 From the repo root (with venv active and Flink cluster running):
 
 ```bash
+cd ~/hw-kafka-flink-health
+source venv/bin/activate
+
 $FLINK_HOME/bin/flink run -py src/flink_job.py \
   --job_name "HeartRateAlertsJob"
+```
+
+If instructed by the instructor/TA (once the Kafka connector is installed under `/opt/flink/opt`), you may need to add a `--jarfile`:
+
+```bash
+$FLINK_HOME/bin/flink run \
+  -py src/flink_job.py \
+  --job_name "HeartRateAlertsJob" \
+  --jarfile /opt/flink/opt/flink-connector-kafka-<version>.jar
 ```
 
 Watch the Flink web UI (port 8081) to see your job running.
@@ -512,7 +600,7 @@ The script should:
 
 ## Running the Unit Tests
 
-Before submitting, run the tests (note: you should not need to source the virtual environment in LinuxLab):
+Before submitting, run the tests:
 
 ```bash
 cd ~/hw-kafka-flink-health
