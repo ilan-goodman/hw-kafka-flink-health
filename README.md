@@ -144,9 +144,9 @@ $SPARK_HOME/bin/spark-shell --version
 
 ### 3. Python virtual environment and dependencies
 
-#### 3.1. On LinuxLab
+On LinuxLab you **must not** install Python packages into the shared Airflow/Spark/Flink environment (it is read-only and owned by another user). Instead, create a venv in your homework repo that you control.
 
-On the `server-airflow25` (or as instructed by the course):
+#### 3.1. On LinuxLab
 
 ```bash
 cd ~/hw-kafka-flink-health
@@ -158,10 +158,11 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Check that `apache-flink`, `kafka-python`, and `pyspark` (optional) are installed **inside this venv**:
+Your `requirements.txt` should **not** list `apache-flink`. PyFlink is provided by the central Flink installation under `/opt/flink`. Installing `apache-flink` from PyPI will fail due to native dependency mismatches.
+
+Check that `kafka-python` (and optionally `pyspark`) are installed inside this venv:
 
 ```bash
-pip show apache-flink
 pip show kafka-python
 pip show pyspark   # optional, for Spark part
 ```
